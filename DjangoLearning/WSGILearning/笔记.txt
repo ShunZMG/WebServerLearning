@@ -1,0 +1,128 @@
+WSGI 学习笔记
+
+1.socket实现一个web服务器
+    ·导入socket
+        import socket
+    ·创建socket对象
+        sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+
+        其中socket.AF_INET表示使用IPv4地址簇
+            关于socket中的其他地址簇还有：
+                AF_UNIX -- unix本机之间进行通信
+                AF_INET6 -- 使用IPv6
+
+        其中socket.SOCK_STREAM 表示使用TCP套接字类型
+            关于socket中的其他套接字类型还有：
+                SOCK_DGRAM -- UDP套接字类型
+                SOCK_RAW -- 原始套接字类型，这个套接字比较强大,创
+                    建这种套接字可以监听网卡上的所有数据帧
+                SOCK_RDM -- 是一种可靠的UDP形式，即保证交付数据报
+                    但不保证顺序。SOCK_RAM用来提供对原始协议的低级
+                    访问，在需要执行某些特殊操作时使用，如发送ICMP
+                    报文。SOCK_RAM通常仅限于高级用户或管理员运行的
+                    程序使用。
+
+    ·绑定端口
+        sock.bind(('localhost',8000))
+
+        绑定localhost(本机的IP地址)的8000端口，bind()方法在AF_INET模式下传入一个元组
+
+    ·开始监听
+        sock.listen(5)
+
+        开始监听localhost地址的8000端口，并设置最大连接数为5
+
+    ·等待连接
+        conn, addr = sock.accept()
+
+        accept()方法返回一个元组(connection, address)
+
+    ·接收来自浏览器的请求内容
+        data = conn.recv(1024)
+
+        recv(bufsize[,flags])方法从socket接收数据，返回值是一个代表所收到的数据的字节对象
+        一次性接收的最大数据量由bufsize制定，参数flags通常忽略
+
+    ·给浏览器返回内容，先返回头部内容，包含状态码，并指定返回内容的类型，以及编码类型
+        conn.send(b'HTTP/1.1 200 OK\r\nContent-Type:text/html;charset=utf-8\r\n\r\n')
+
+    ·返回数据
+        conn.send('you are so beautiful!'.encode('utf-8'))
+
+    ·关闭连接
+        conn.close()
+
+
+2.wsgi实现一个web服务器(单url)
+    利用wsgiref实现，
+    from wsgiref.simple_server import make_server
+
+    ·创建一个wsgi服务器
+        make_server()方法中传入参数：本机IP地址，端口号，处理函数
+
+    ·run_server(environ, start_response)为处理函数，实现对请求的处理，针对单url
+        处理函数传入参数 environ, start_response
+        environ：一个包含所有HTTP请求信息的dict对象
+            environ.get("PATH_INFO")可以获得所请求的url信息
+        start_response：一个发送HTTP响应的函数
+
+    ·启动服务器
+        s.serve_forever()
+
+    ·注意：
+        返回数据时首先应该注意返回头部内容
+        头部内容包括状态码，文本类型，编码类型
+        如：start_response('404',[('Content-Type','text/html;charset=utf-8')])
+
+3.wsgi实现一个web服务器(多url)
+    利用wsgiref实现，
+    from wsgiref.simple_server import make_server
+
+    ·创建一个wsgi服务器
+
+    ·创建路由分发器，可以为一个函数，从浏览器发来的请求头中获取url，
+        然后对这个url进行分配相应的业务函数
+
+    ·开发相应的业务函数
+
+    ·接收到请求后，先到达路由分发器，路由分发器判断是否有这个函数，
+        如果有这个函数就调用，如果没有就返回404
+
+    ·启动服务器
+        s.serve_forever()
+
+4.wsgi实现一个web服务器(带图片请求的多url)
+    利用wsgiref实现，
+    from wsgiref.simple_server import make_server
+
+    ·创建一个wsgi服务器
+
+    ·创建路由分发器，可以为一个函数，从浏览器发来的请求头中获取url，
+        然后对这个url进行分配相应的业务函数
+
+    ·开发相应的业务函数
+
+    ·接收到请求后，先到达路由分发器，路由分发器判断是否有这个函数，
+        如果有这个函数就调用，如果没有就返回404
+
+    ·接收到请求后，如果是一个图片类型的请求，即请求的页面中需要
+        请求指定路径下的图片类型文件，这时需要对获取到的图片url
+        进行处理，我们从environ中获取到的图片url只是相对路径，
+        程序无法找到图片，因此需要将其转变为绝对路径，这个时候
+        我们需要获取当前文件的文件夹路径：
+
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+        获取到BASE_DIR之后，将获取到的图片的url与BASE_DIR进
+        行拼接：
+
+        img_path = "%s%s" %(BASE_DIR, request_url)
+
+        随后判断img_path路径下的文件是否存在，若存在，就将其内
+        容返回，在图片处理函数调用结束时可以返回一个列表，其中，
+        列表第一项为返回的图片数据（若文件不存在，则返回NONE），
+        第二项为文件状态标志，0表示文件存在，1表示文件不存在，
+        方便请求处理函数的某些处理
+
+    ·启动服务器
+        s.serve_forever()

@@ -1,0 +1,100 @@
+
+Django学习笔记
+
+1.创建项目
+    命令： django-admin startproject [项目名]
+
+    目录结构：
+    my_cite
+        |__ manage.py  # 管理程序的文件，启动和结束
+        |__ my_site
+                |__ __init__.py # python的包
+                |__ settings.py # 程序的配置文件
+                |__ urls.py # 程序的路由系统，即：url和处理其函数的对应的关系
+                |__ wsgi.py # 指定框架的wsgi
+
+2.创建app
+    命令： django-admin startapp [app名]
+
+    目录结构：
+    app01
+        |__ migrations # 数据库相关
+        |       |__ __init__.py
+        |
+        |__ __init__.py # python包
+        |__ admin.py # 数据库管理后台
+        |__ apps.py # django中将项目和app进行关联的文件
+        |__ models.py # 数据库操作相关
+        |__ tests.py # 单元测试
+        |__ views.py # 业务逻辑代码 （⭐重要）
+
+3.第一次Django请求
+    (1)匹配路由，路由分发器查找用户请求的url对应的业务函数
+        ·如果找到业务函数，就调用业务函数
+        ·如果找不到，就报404
+    (2)业务函数，执行业务逻辑
+    (3)返回数据给浏览器
+
+    ·第一次Django请求过程：
+
+        浏览器发出请求 --->>  urls.py (匹配路由过程，分发url)
+                     --->> views.py (接收到url ①执行业务逻辑 ②并返回数据给浏览器)
+                     --->> 浏览器 (接收返回的数据)
+
+    ·代码实现
+        在urls.py文件中编写url分发路径：
+        导入相应的app文件夹中的views.py(包含业务逻辑代码的文件)
+        from app01 import views
+        path("test", views.test_view)  --->> 意为将url:test 分发到views.test_view方法中
+
+        在app01文件夹中的views.py中实现test_view方法
+        注意，test_view方法实现时要加上一个参数request
+        在test_view方法中返回数据时，不需要再像基于wsgi的web server一样写报头，再返回
+        这里我们使用django封装好的HttpResponse()方法进行返回数据，其中直接传入数据即可
+        test_view中传入的request参数为浏览器传过来的参数包含很多已经封装好的属性
+
+    ·总结：
+        1. urls.py:编写路由
+        2. 在views.py中编写业务函数
+            2.1 编写业务，代码
+            2.2 通过HttpResponse方法返回数据给前端
+        3. python manage.py runserver 0.0.0.0: 8000  启动测试服务器
+
+4.模板初探
+    之前在自定义的views里面实现业务方法时，我们在通过HttpResponse方法返回数据
+    如果要返回html语言格式的数据，这个时候我们需要以字符串的形式返回，但这会导致python代码和
+    html代码混合，耦合度高，然后导致维护困难，这个时候需要利用模板来直接返回文件
+
+    4.1 在模板中添加路径：
+        配置settings.py -->> TEMPLATES = ['DIRS':[添加的路径]]
+
+    4.2 这时在自定义的views里面不能再以HttpResponse方法返回数据，需要使用render方法进行模板的渲染
+        基本用法：render(request,templates_name)
+        request为传递给自定义views的request信息，它必须存在，templates_name为要打开的文件目录（名）
+
+    使用模板，降低了程序代码的耦合度，即解耦，同时也确实实现了分工
+
+5.Web框架开发基本模式
+    MVC 是一种使用MVC (Model View Controller 模型-视图-控制器) 设计创建Web应用程序的模式
+    ·Model (模型) 一般对应数据库操作、记录的存取
+    ·View (视图) 决定着如何展示数据
+    ·Controller (控制器) 负责处理用户交互的部分。控制器负责从视图读取数据，控制用户输入，并向模型发送数据
+
+    MTV 框架：
+        Django是一个MTV框架，其架构模板看上去与传统的MVC架构并没有太大的区别。Django将MVC中的视图进一步分解
+        为Django视图和Django模板两个部分，分别决定“展现哪些数据”和“如何展现”，使得Django的模板可以根据需要
+        随时替换，而不仅仅限制于内置的模板。至于MVC控制器部分，由Django框架的URLconf来实现。
+
+    比较：
+        MVC 中 VIEW 负责 业务逻辑处理+展示数据
+        MTV 中 Views 负责业务逻辑处理
+               Templates 负责展示数据
+
+    Django中已经将Controller部分封装好，只暴露出来url和调用的业务逻辑函数
+
+
+6.Django请求流程
+    用户在浏览器中访问url -->>URL控制器(Controller) -->>根据url匹配相应的视图函数 -->>views.py -->>去models里取数据
+    -->>Models进数据库中取数据 -->>Models将数据返回给视图 -->>views.py -->>视图把要展示的数据返回给模板
+    -->>Template -->>一般模板为html文件
+
